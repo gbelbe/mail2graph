@@ -203,6 +203,20 @@ jobs:
 # serves; this fails that. A scenario with a step that has no definition fails
 # when the behaviour tests run, so orphaned steps are caught here too. Needs
 # `.feature` files under `paths`, and fails saying so when there are none.
+  mutation-score:
+    name: Mutation score (global, 80 %)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --extra dev --extra imap
+      - name: mutmut run (tout le code muté)
+        run: uv run --with-requirements scripts/gate-requirements.txt mutmut run
+      - run: uv run --with-requirements scripts/gate-requirements.txt mutmut export-cicd-stats
+      - name: "Score global : le seuil de craft-gate.toml [mutation] vaut pour tout le code, pas seulement le diff"
+        run: uv run --with-requirements scripts/gate-requirements.txt python3 tools/check_mutation_score.py
+
   behaviour-coverage:
     name: Behaviour coverage (Gherkin)
     runs-on: ubuntu-latest

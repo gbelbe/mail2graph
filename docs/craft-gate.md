@@ -18,14 +18,18 @@ rien ne s'applique. Le catalogue est dans [CRAFTSMANSHIP.md](../CRAFTSMANSHIP.md
 | Refactor First | actif |
 | Complexité (cyclomatique et cognitive) | actif |
 | Couverture du patch (diff-cover, `pytest --cov`) | actif, seuil 90 % |
-| Mutation (mutmut) | actif ; configuré dans `[tool.mutmut]` (tests unitaires seulement, `tests/features` exclu pour la vitesse) |
+| Mutation (mutmut), fonctions touchées | actif ; configuré dans `[tool.mutmut]` |
+| Mutation, score global ≥ 80 % | actif (`mutation-score`, `tools/check_mutation_score.py`) |
 | Couverture comportementale (Gherkin) | actif ; scénarios dans `tests/features`, exécutés par pytest-bdd |
 
-Mesure initiale (octobre 2026) : sur `domain.py`, `pipeline.py`, `adapters/extractors.py` et `adapters/linker.py`,
-mutmut génère 428 mutants et les tests unitaires en tuent 274 (64 %). Le contrôle applique un plancher de 80 % aux
-fonctions qu'une PR touche, avec une baseline enregistrée : les fonctions les plus faibles sont `Pipeline.propose`
-(62 survivants), `GazetteerExtractor.extract` (19) et `FuzzyLinker.link` (17). Les toucher demandera d'abord de
-renforcer leurs tests. Les scénarios Gherkin ne sont pas comptés dans cette mesure.
+**Seuil de 80 % sur tout le code muté.** Le contrôle de craft-gate ne regarde que les fonctions qu'une PR touche.
+Tant que le projet est jeune, le seuil de `craft-gate.toml [mutation]` vaut pour l'ensemble : le job `mutation-score`
+lance `mutmut run` sur `domain.py`, `pipeline.py`, `adapters/extractors.py` et `adapters/linker.py`, puis
+`tools/check_mutation_score.py` échoue sous le seuil. Mesure actuelle : **96,7 %** (414 mutants tués sur 428). Les 14
+survivants sont surtout équivalents (valeurs initiales remplacées avant usage, ordre des candidats).
+
+Les tests sélectionnés pour mutmut sont `tests/test_pipeline.py`, `tests/test_behaviour_details.py` (valeurs exactes et
+bornes) et les scénarios Gherkin. Pour voir les survivants : `mutmut run && mutmut results`.
 
 ## En local
 
