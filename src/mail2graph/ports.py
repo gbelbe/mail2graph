@@ -1,0 +1,43 @@
+"""Ports : les interfaces dont dépend le cœur. Chaque adaptateur implémente l'une d'elles.
+
+Le cœur n'importe jamais d'adaptateur ; l'assemblage se fait dans factory.py à partir de la configuration.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Iterable, Protocol, Sequence
+
+from .domain import Candidate, GraphContext, Mention, Message, Proposition
+
+
+class MailSource(Protocol):
+    def fetch(self, since: datetime | None = None) -> Iterable[Message]: ...
+
+
+class Extractor(Protocol):
+    """Repère des mentions dans un message. Plusieurs extracteurs peuvent se cumuler."""
+    def extract(self, message: Message, ctx: GraphContext) -> Sequence[Mention]: ...
+
+
+class Linker(Protocol):
+    def link(self, mention: Mention, ctx: GraphContext) -> Sequence[Candidate]: ...
+
+
+class GraphStore(Protocol):
+    def context(self) -> GraphContext: ...
+    def commit(self, accepted: Sequence[Proposition]) -> int: ...
+
+
+class ReviewQueue(Protocol):
+    def publish(self, propositions: Sequence[Proposition]) -> int: ...      # renvoie le nombre de nouvelles
+    def pending(self) -> list[Proposition]: ...
+    def decide(self, proposition_id: str, accepted: bool, note: str = "") -> None: ...
+    def accepted(self) -> list[Proposition]: ...
+    def mark_committed(self, ids: Sequence[str]) -> None: ...
+
+
+class StateStore(Protocol):
+    def seen(self, message_id: str) -> bool: ...
+    def mark(self, message_id: str) -> None: ...
+    def last_run(self) -> datetime | None: ...
+    def touch(self) -> None: ...

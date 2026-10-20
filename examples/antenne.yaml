@@ -1,0 +1,37 @@
+# Exemple réel : graphe « antenne-relais » (dépôt voisin ../graphe). Aucun secret ici.
+source:
+  type: imap
+  host: imap.gmail.com            # ou imap.proton.me via Proton Bridge, etc.
+  user: boite-dediee@exemple.fr
+  password_cmd: security find-generic-password -s mail2graph -a boite-dediee@exemple.fr -w
+  mailbox: INBOX
+  limit: 200
+
+filter:
+  senders_allow: []               # adresses ou domaines ; vide = tout accepter
+  subject_regex: null
+
+extract:
+  regex:
+    dp: 'DP\s?0?29\s?\d{3}\s?\d{2}\s?\d{5}'
+    parcelle: '\b[A-Z]{1,2}\s?\d{1,4}\b(?=.*parcelle)'
+  gazetteer: true
+  gazetteer_min_len: 5
+
+link:
+  link_threshold: 0.92
+  suggest_threshold: 0.75
+
+graph:
+  files: ["../../graphe/antenne-*.ttl"]
+  base_uri: https://kersalous.bzh/dossier/
+  mail_class: https://kersalous.bzh/ontology/antenne#Document
+  event_class: https://kersalous.bzh/ontology/antenne#Evenement
+  link_predicate: https://kersalous.bzh/ontology/antenne#mentionne
+  date_predicate: https://kersalous.bzh/ontology/antenne#dateEvenement
+  output_file: ../../graphe/antenne-courriels.ttl
+  new_entity_kinds: {}
+
+paths:
+  queue: staging/propositions.yaml   # contient des données personnelles : hors dépôt public
+  state: staging/state.json

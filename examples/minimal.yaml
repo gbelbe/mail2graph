@@ -1,0 +1,18 @@
+# Configuration minimale : lire un fichier mbox local et un graphe Turtle voisin. Aucun secret.
+source:
+  type: mbox
+  path: courriels.mbox
+
+extract:
+  regex:
+    dossier: 'DP\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{5}'
+  gazetteer: true
+
+graph:
+  files: ["graphe.ttl"]
+  base_uri: https://example.org/dossier/
+  mail_class: https://example.org/ontology#Courriel
+  event_class: https://example.org/ontology#Evenement
+  link_predicate: https://example.org/ontology#mentionne
+  date_predicate: https://example.org/ontology#dateEvenement
+  output_file: courriels.ttl
