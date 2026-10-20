@@ -1,0 +1,296 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e '.[dev]'
+      - run: pytest -q
+
+  tidy:
+    name: Tidy First ratchet
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # need the base branch and full commit history
+
+      - name: "Tidy First ratchet: a tidy(<type>) / test(characterize) commit or Tidy-Exempt trailer"
+        run: bash scripts/check_tidy_ratchet.sh --base "origin/${{ github.base_ref }}"
+
+# A separate job, not a step in `tidy` above, because it's a real CI pass —
+# it needs craftCov's toolchain (ruff, pylint, vulture), which `uv run --with-requirements
+# scripts/gate-requirements.txt` supplies at pinned versions, so your pyproject needs no extra for it;
+# `tidy` above needs nothing beyond bash. Fails a PR when a touched .py file's total
+# across the 8 mechanically-detectable heuristics didn't go down (or,
+# starting from 0, went up at all) — see CRAFTSMANSHIP.md's "Refactor First".
+  refactor-first:
+    name: Refactor First gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: "Refactor First: touched files' detectable-heuristic total must go down (or stay 0)"
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/check_refactor_first.py --base "origin/${{ github.base_ref }}"
+
+# Independent of craftCov — its own script, its own catalog entries
+# (CG032-CG035), its own tools (radon, cognitive-complexity, from the same pinned
+# requirements file; see DESIGN.md's "The complexity ratchet"). Fails a PR when a touched
+# function/literal's cyclomatic/cognitive complexity, invariant-return, or
+# duplicated-string-literal metric got worse than where the branch
+# diverged — grandfathers what's already there, blocks what gets worse.
+  complexity:
+    name: Complexity ratchet
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: "Complexity ratchet: cyclomatic/cognitive complexity, invariant return, duplicated literal"
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/check_complexity_ratchet.py --base "origin/${{ github.base_ref }}"
+
+# Unlike the three gates above, this one wires up `pytest --cov` + diff-cover
+# (github.com/Bachmann1234/diff_cover), both third-party, against *your own*
+# test suite; add `diff-cover` (plus your coverage runner, if you don't already
+# have one) to your dev dependencies. Fails when the diff's *changed* lines are
+# under-covered (`threshold`, default 90, set in craft-gate.toml); a repo that's
+# 40% covered overall still passes as long as every line this PR touches is
+# well-tested — the point is not letting new debt accumulate, not
+# retroactively demanding full coverage of everything that exists. Test files are
+# excluded from the measurement (`exclude`, default tests/*, test_*.py, conftest.py):
+# a test's own lines always run, and would pad the percentage. Measure a
+# specific package with `source = "your_package"` under [tool.craft-gate.patch-coverage].
+#
+# If you already have a job that runs `pytest --cov ... --cov-report=xml`
+# (a lint-and-test job, a matrix job, whatever) — add the "Patch coverage"
+# step below to THAT job instead of using this standalone one. This job
+# reruns your whole suite a second time just to get a second coverage.xml;
+# that's the right shape only when nothing else already produces one.
+  patch-coverage:
+    name: Patch coverage (diff-cover)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # need the base branch for diff-cover's --compare-branch
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Is this gate on for this repo?
+        id: gate
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/gate_config.py patch-coverage
+
+      - name: uv sync --extra dev --extra imap   # ← installs your own test deps; narrow it if your extras conflict
+        if: steps.gate.outputs.status == 'run'
+        run: uv sync --extra dev --extra imap
+
+      - name: Run tests with coverage
+        if: steps.gate.outputs.status == 'run'
+        run: uv run --with-requirements scripts/gate-requirements.txt pytest --cov${{ steps.gate.outputs.source && format('={0}', steps.gate.outputs.source) || '' }} --cov-report=xml
+
+      - name: "Patch coverage: changed lines must be covered"
+        if: steps.gate.outputs.status == 'run'
+        run: |
+          set -f   # the exclude globs are for diff-cover, not for this shell
+          uv run --with-requirements scripts/gate-requirements.txt diff-cover coverage.xml \
+            --compare-branch "origin/${{ github.base_ref }}" \
+            --fail-under ${{ steps.gate.outputs.threshold }} \
+            ${{ steps.gate.outputs.exclude && format('--exclude {0}', steps.gate.outputs.exclude) || '' }}
+
+# The one gate here that doesn't call a script craft-gate ships either — it
+# wires up mutmut (github.com/boxed/mutmut), third-party, against *your own*
+# test suite. Reruns your tests once per mutant, so it's the most expensive
+# job in this file by a wide margin; the cache step below is what keeps
+# repeat runs fast (mutmut's own incremental caching does the rest). Fails
+# when a function *this diff touches* has a mutation score below
+# --threshold (80 is a starting point, not a mandate — see CRAFTSMANSHIP.md's
+# "Mutation ratchet"). No Tidy-Exempt: bypass, same reasoning as
+# patch-coverage; a genuinely equivalent mutant gets mutmut's own
+# `# pragma: no mutate` instead.
+#
+# Needs `[tool.mutmut]` in the consuming project's pyproject.toml: with the gate
+# on and that section missing, the job fails and says so (see "Test gates"
+# above); it no longer passes quietly. The dependency is part of the default dev
+# toolchain and the local runner uses the same cached `mutants/` directory.
+# Recommended config:
+#   source_paths = ["your_package"]
+#   # Keep mutation runs focused; the normal CI test job still runs the full suite.
+#   pytest_add_cli_args_test_selection = ["tests/unit/test_feature.py", "-m", "mutation"]
+#   # Keep source_paths/only_mutate limited to the production contracts those tests cover.
+#   # scripts/mutation_plan.py decides what a change invalidates (an edited test re-tests the
+#   # functions it covers, not the whole campaign); mutmut's own blunt invalidation is turned
+#   # down so it does not reset everything first. No tests/**/*.py in cache_invalidation_files.
+#   on_dependency_change = "warn"
+  mutation-ratchet:
+    name: Mutation ratchet
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    env:
+      CRAFT_GATE_TIMINGS: gate-timings.jsonl   # scripts/gate_timing.py appends each stage's duration here
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # need the base branch for the diff
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Is this gate on for this repo?
+        id: gate
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/gate_config.py mutation
+
+      - name: uv sync --extra dev --extra imap   # ← installs your own test deps; narrow it if your extras conflict
+        if: steps.gate.outputs.status == 'run'
+        run: uv sync --extra dev --extra imap
+
+      - name: Cache mutmut results
+        if: steps.gate.outputs.status == 'run'
+        uses: actions/cache@v6
+        with:
+          path: mutants
+          key: mutmut-${{ runner.os }}-${{ hashFiles('**/*.py', 'pyproject.toml', 'uv.lock', 'scripts/gate-requirements.txt') }}
+          restore-keys: mutmut-${{ runner.os }}-
+
+      # Full campaign on first initialisation and on the few cache-wide causes (a lock file, the
+      # dependency list, pytest's own arguments, the root conftest); otherwise only what the diff
+      # can have changed. See DESIGN.md, "Diff-scoped mutation runs".
+      - name: mutmut run (diff-scoped)
+        if: steps.gate.outputs.status == 'run'
+        run: uv run --with-requirements scripts/gate-requirements.txt python3 scripts/mutation_plan.py run --base "origin/${{ github.base_ref || 'main' }}"
+
+      - name: "Mutation ratchet: touched functions' mutation score"
+        if: steps.gate.outputs.status == 'run'
+        run: |
+          uv run --with-requirements scripts/gate-requirements.txt python3 scripts/check_mutation_ratchet.py \
+            --base "origin/${{ github.base_ref || 'main' }}" \
+            --threshold ${{ steps.gate.outputs.threshold }} \
+            --improvement ${{ steps.gate.outputs.improvement }}
+
+      # Where the time went: the planner's stages, then the tests that make every mutant slow.
+      - name: Where the mutation time went
+        if: always() && steps.gate.outputs.status == 'run'
+        run: |
+          { python3 scripts/gate_timing.py report "$CRAFT_GATE_TIMINGS"
+            echo
+            python3 scripts/gate_timing.py mutants; } >> "$GITHUB_STEP_SUMMARY"
+
+# Behaviour (Gherkin) coverage: the same question as patch-coverage, asked of the
+# scenarios alone. It runs only the behaviour tests (`paths`, default
+# tests/features, e.g. pytest-bdd scenarios) with coverage and requires the
+# lines this diff changed to be covered by them (`threshold`, default 80). Unit
+# tests can cover a line without any scenario ever describing the behaviour it
+# serves; this fails that. A scenario with a step that has no definition fails
+# when the behaviour tests run, so orphaned steps are caught here too. Needs
+# `.feature` files under `paths`, and fails saying so when there are none.
+  behaviour-coverage:
+    name: Behaviour coverage (Gherkin)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Is this gate on for this repo?
+        id: gate
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/gate_config.py bdd
+
+      - name: uv sync --extra dev --extra imap   # ← your own test deps, including pytest-bdd
+        if: steps.gate.outputs.status == 'run'
+        run: uv sync --extra dev --extra imap
+
+      - name: Run the behaviour tests with coverage
+        if: steps.gate.outputs.status == 'run'
+        run: uv run --with-requirements scripts/gate-requirements.txt pytest ${{ steps.gate.outputs.paths }} --cov --cov-report=xml:coverage-bdd.xml
+
+      - name: "Behaviour coverage: changed lines must be covered by scenarios"
+        if: steps.gate.outputs.status == 'run'
+        run: |
+          set -f   # the exclude globs are for diff-cover, not for this shell
+          uv run --with-requirements scripts/gate-requirements.txt diff-cover coverage-bdd.xml \
+            --compare-branch "origin/${{ github.base_ref }}" \
+            --fail-under ${{ steps.gate.outputs.threshold }} \
+            ${{ steps.gate.outputs.exclude && format('--exclude {0}', steps.gate.outputs.exclude) || '' }}
+
+# ── Reporting, not enforcement — but still part of the default setup ────────
+# Neither job fails a build; both make what the gates above found visible
+# where you're already looking, instead of just a CI log.
+
+# Posts (or updates in place) a sticky PR comment showing craftCov's
+# repo-wide total and its by-heuristic breakdown, diffed against where the
+# branch diverged — see DESIGN.md's Reporting section and
+# scripts/craftcov_pr_comment.py's own docstring. Needs `pull-requests:
+# write` (not just the default `read`) to post/edit the comment.
+  craftcov-pr-comment:
+    name: craftCov PR report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Post/update the craftCov PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/craftcov_pr_comment.py \
+            --base "origin/${{ github.base_ref }}" \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}"
+
+# Uploads craftCov's findings to GitHub's own code-scanning dashboard —
+# history, per-finding tracking, and a native alert count, instead of a
+# hand-rolled report needing its own hosting. Needs `security-events:
+# write`, and — the one real exception to this being on by default —
+# either a PUBLIC repo or GitHub Advanced Security on a private one; code
+# scanning silently isn't available otherwise, so skip just this one job
+# if neither applies. Runs on push to your default branch, not every PR,
+# since the point is tracking the branch's actual current state over time.
+  craftcov-sarif:
+    name: Upload craftCov SARIF
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Generate craftCov SARIF
+        run: uv run --no-project --with-requirements scripts/gate-requirements.txt python3 scripts/craftcov.py --format sarif --no-cache --no-diff > craftcov.sarif
+
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: craftcov.sarif
+          category: craftcov

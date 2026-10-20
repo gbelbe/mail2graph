@@ -1,6 +1,7 @@
 # mail2graph
 
-[![tests](https://github.com/gbelbe/mail2graph/actions/workflows/tests.yml/badge.svg)](https://github.com/gbelbe/mail2graph/actions/workflows/tests.yml)
+[![ci](https://github.com/gbelbe/mail2graph/actions/workflows/ci.yml/badge.svg)](https://github.com/gbelbe/mail2graph/actions/workflows/ci.yml)
+[![craft-gate](https://img.shields.io/badge/craft--gate-enabled-blue)](https://github.com/gbelbe/craft-gate)
 
 Connecteur **courriel → graphe RDF** avec **relecture humaine**.
 
@@ -49,6 +50,7 @@ Après `review --accept-all` puis `commit`, un fichier Turtle séparé reçoit l
 - [Architecture](docs/architecture.md) : ports, flux, ce qui entre dans le graphe.
 - [Configuration](docs/configuration.md) : toutes les clés et les commandes.
 - [Étendre](docs/extending.md) : plugins, injection d'adaptateurs, extracteur d'agent.
+- [Qualité du code (craft-gate)](docs/craft-gate.md)
 - [Contribuer](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 ## Intégration dans un orchestrateur
