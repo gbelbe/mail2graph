@@ -28,6 +28,10 @@ Pour Gmail, il faut IMAP activé et un mot de passe d'application ; pour Proton,
 
 - `regex` : dictionnaire *nature de mention → expression régulière*. La nature sert ensuite à `graph.new_entity_kinds`.
 - `gazetteer` : repère les libellés d'entités déjà dans le graphe (`gazetteer_min_len` caractères au minimum).
+- `gliner` : reconnaissance d'entités zéro-shot (extra `pip install 'mail2graph[ner]'`, télécharge un modèle au premier usage).
+  `labels` associe une nature de mention à l'étiquette donnée au modèle (`organisation: "organisation"`) ; sans `labels`,
+  chaque classe du graphe devient une étiquette et sa nature est l'URI de la classe. `model`, `threshold` (0,5 par
+  défaut) et `max_chars` (4000 : sujet + début du corps) règlent le reste.
 - `plugins` : extracteurs tiers (groupe `mail2graph.extractors`).
 
 ## `link`

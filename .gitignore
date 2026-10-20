@@ -3,3 +3,10 @@ __pycache__/
 *.egg-info/
 staging/
 .pytest_cache/
+coverage.xml
+coverage-bdd.xml
+.coverage
+craftcov-report.md
+craftcov.sarif
+mutants/
+gate-timings.jsonl

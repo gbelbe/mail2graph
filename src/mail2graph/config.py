@@ -23,7 +23,15 @@ class FilterCfg(BaseModel):
     subject_regex: str | None = None
 
 
+class GlinerCfg(BaseModel):
+    model: str = "urchade/gliner_multi-v2.1"
+    threshold: float = Field(0.5, ge=0, le=1)
+    labels: dict[str, str] = Field(default_factory=dict)     # nature de mention -> étiquette donnée au modèle
+    max_chars: int = 4000                                    # texte analysé : sujet + début du corps
+
+
 class ExtractCfg(BaseModel):
+    gliner: GlinerCfg | None = None                          # reconnaissance d'entités zéro-shot (extra [ner])
     regex: dict[str, str] = Field(default_factory=dict)      # nom de mention -> expression régulière
     gazetteer: bool = True                                   # repère les libellés d'entités déjà dans le graphe
     gazetteer_min_len: int = 5

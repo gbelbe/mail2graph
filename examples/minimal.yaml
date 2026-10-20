@@ -4,6 +4,8 @@ source:
   path: courriels.mbox
 
 extract:
+  # gliner:                       # NER zéro-shot (pip install 'mail2graph[ner]')
+  #   labels: {organisation: "organisation"}
   regex:
     dossier: 'DP\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{5}'
   gazetteer: true
