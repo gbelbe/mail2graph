@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from .adapters.extractors import GazetteerExtractor, RegexExtractor
+from .adapters.gliner_extractor import GlinerExtractor
 from .adapters.linker import FuzzyLinker
 from .adapters.rdf_store import RdfGraphStore
 from .adapters.sources import ImapSource, MboxSource
@@ -49,6 +50,8 @@ def build_pipeline(cfg: Config, **override) -> Pipeline:
         exs.append(RegexExtractor(cfg.extract.regex))
     if cfg.extract.gazetteer:
         exs.append(GazetteerExtractor(cfg.extract.gazetteer_min_len))
+    if cfg.extract.gliner:
+        exs.append(GlinerExtractor.from_config(cfg.extract.gliner))
     exs += [_plugin("mail2graph.extractors", n)(cfg) for n in cfg.extract.plugins]
     return Pipeline(
         cfg=cfg,

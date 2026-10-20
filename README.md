@@ -71,8 +71,8 @@ Le module ne connaît aucun outil d'orchestration. On l'appelle par :
 
 ## Limites
 
-Extraction par expressions régulières et libellés du graphe ; liaison floue qui peut se tromper (d'où la relecture) ;
-pas encore de NER, de validation SHACL, de pièces jointes ni d'interface web. Les classes et propriétés de la
+Extraction par expressions régulières, libellés du graphe et, en option, GLiNER (extra `[ner]`, non mesuré sur de vrais courriels) ; liaison floue qui peut se tromper (d'où la relecture) ;
+pas encore de validation SHACL, de pièces jointes ni d'interface web. Les classes et propriétés de la
 configuration doivent exister dans votre ontologie.
 
 ## Développement

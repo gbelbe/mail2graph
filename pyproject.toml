@@ -45,5 +45,5 @@ markers = [
 paths_to_mutate = ["src/mail2graph/"]
 do_not_mutate = ["src/mail2graph/__init__.py", "src/mail2graph/cli.py", "src/mail2graph/config.py", "src/mail2graph/factory.py", "src/mail2graph/ports.py", "src/mail2graph/adapters/__init__.py", "src/mail2graph/adapters/sources.py", "src/mail2graph/adapters/rdf_store.py", "src/mail2graph/adapters/stores.py"]
 tests_dir = ["tests/"]
-also_copy = [".gitignore"]
-pytest_add_cli_args_test_selection = ["tests/test_pipeline.py", "tests/test_behaviour_details.py", "tests/features/test_features.py"]
+also_copy = [".gitignore", "tools"]
+pytest_add_cli_args_test_selection = ["tests/test_pipeline.py", "tests/test_behaviour_details.py", "tests/test_gliner_extractor.py", "tests/features/test_features.py"]

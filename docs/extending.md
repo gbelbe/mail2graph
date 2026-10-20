@@ -44,6 +44,13 @@ pipeline.run()
 C'est la voie recommandée pour intégrer le module dans un orchestrateur : il n'a besoin que de la CLI (`--json`)
 ou de cette fonction.
 
+## NER intégré : GLiNER
+
+`extract.gliner` active `GlinerExtractor` (`adapters/gliner_extractor.py`). Il envoie sujet et corps au modèle avec les
+étiquettes de la configuration, ou à défaut celles des classes du graphe, et renvoie des `Mention` (nature, texte,
+confiance). Elles suivent ensuite le chemin normal : liaison floue, puis proposition de nouvelle entité si la nature est
+dans `graph.new_entity_kinds`. Le modèle se charge à la première utilisation, ou s'injecte (`model=`) pour les tests.
+
 ## Un extracteur qui délègue à un agent
 
 Un agent (LLM) se branche comme n'importe quel `Extractor`. Deux règles : le texte du message est une **donnée**
