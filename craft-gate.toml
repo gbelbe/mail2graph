@@ -20,14 +20,14 @@ source = "mail2graph"        # package to measure; empty = whatever coverage mea
 exclude = ["tests/*", "*/tests/*", "test_*.py", "*_test.py", "conftest.py"]   # not counted
 
 [mutation]                  # a touched function's tests must notice a change in its behaviour
-enabled = false
-reason = "Pas de section [tool.mutmut] ni de baseline pour l'instant ; à activer en version 0.2 une fois la suite de tests étoffée (voir docs/test-plan.md)."
+enabled = true
+reason = ""
 threshold = 80              # percent of mutants killed that passes outright
 improvement = 20            # below the threshold, a recorded baseline may improve by this percent (never owing more than the threshold)
 
 [bdd]                       # the lines a diff changed must be covered by Gherkin scenarios
-enabled = false
-reason = "Le plan Gherkin (features/, PR de plan de test) n'a pas encore de définitions d'étapes pytest-bdd ; à activer quand les scénarios s'exécutent sous tests/features."
+enabled = true
+reason = ""
 threshold = 80
 paths = ["tests/features"]  # where the scenarios live
 exclude = ["tests/*", "*/tests/*", "test_*.py", "*_test.py", "conftest.py"]

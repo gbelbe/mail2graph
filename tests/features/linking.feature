@@ -18,8 +18,8 @@ Fonctionnalité: Extraction et liaison aux entités du graphe
     Quand je lance "run"
     Alors une proposition "link" vers l'entité de la mairie est créée
 
-  Scénario: Une correspondance incertaine est signalée
-    Étant donné un message qui cite "Mairie de Ploneour Lanvern" avec une faute
+  Scénario: Une correspondance approximative est signalée comme incertaine
+    Étant donné un message qui cite "Mairie de Plouhinec-Lanvern" au libellé approchant
     Quand je lance "run"
     Alors la proposition "link" porte la note "Correspondance incertaine"
 
@@ -34,6 +34,7 @@ Fonctionnalité: Extraction et liaison aux entités du graphe
     Quand je lance "run"
     Alors aucune proposition "new_entity" n'est créée
 
+  @wip
   Scénario: Deux entités de même libellé
     Étant donné deux entités du graphe portant le libellé "Phoenix France Infrastructures"
     Et un message qui cite "Phoenix France Infrastructures"

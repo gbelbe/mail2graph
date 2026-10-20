@@ -5,6 +5,9 @@ Fonctionnalité: Qualité du graphe produit
   En tant que responsable du graphe
   Je veux valider ce qui est écrit
 
+  Contexte:
+    Étant donné un passage "run" ayant produit un courriel, deux liens et un événement
+
   @wip
   Scénario: Les classes et propriétés configurées existent dans l'ontologie
     Étant donné une configuration dont la classe de courriel est absente de l'ontologie

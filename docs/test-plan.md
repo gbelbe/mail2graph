@@ -1,7 +1,8 @@
 # Plan de test (Gherkin)
 
-Les scénarios sont écrits en français (`# language: fr`) dans `features/`. Ils décrivent le comportement attendu avant
-d'être branchés sur du code : ce plan est un **point de départ**, aucune définition d'étapes n'existe encore.
+Les scénarios sont écrits en français (`# language: fr`) dans `tests/features/`. Les définitions d'étapes sont dans
+`tests/features/conftest.py` et `tests/features/test_features.py` les exécute avec pytest-bdd. État : **35 scénarios
+exécutés et passants**, 5 ignorés (2 `@imap`, 3 `@wip`).
 
 ## Outillage prévu
 
@@ -16,7 +17,9 @@ d'être branchés sur du code : ce plan est un **point de départ**, aucune déf
 |---|---|
 | `@ingestion`, `@linking`, `@review`, `@privacy`, `@cli`, `@extensibility`, `@graph` | domaine |
 | `@imap` | exige un serveur IMAP de test |
-| `@wip` | fonctionnalité pas encore implémentée : le scénario décrit la cible |
+| `@wip` | fonctionnalité pas encore implémentée : le scénario décrit la cible ; ignoré à l'exécution |
+
+Les scénarios `@wip` et `@imap` sont ignorés par `tests/features/conftest.py` ; retirer l'étiquette (et ajouter les étapes ou le serveur de test) les active.
 
 ## Couverture et état
 

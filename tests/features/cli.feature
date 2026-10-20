@@ -24,6 +24,7 @@ Fonctionnalité: Interface en ligne de commande
     Alors le code de sortie est 3
 
   Scénario: "review" liste sans modifier
+    Étant donné qu'il reste des propositions en attente
     Quand je lance "review --json"
     Alors la sortie liste les propositions en attente
     Et aucune décision n'est enregistrée
